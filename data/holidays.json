@@ -1,0 +1,24 @@
+{
+  "generated": "2026-06-14",
+  "calendars": [
+    {
+      "name": "boston_meters",
+      "description": "City of Boston parking meter holidays \u2014 meters suspended, parking free",
+      "source": "https://www.boston.gov/departments/transportation/parking-meters",
+      "dates_2026": [
+        "2026-01-01",
+        "2026-01-19",
+        "2026-02-16",
+        "2026-04-20",
+        "2026-05-25",
+        "2026-07-04",
+        "2026-09-07",
+        "2026-10-12",
+        "2026-11-11",
+        "2026-11-26",
+        "2026-12-25"
+      ],
+      "note": "Dates shift when holiday falls on weekend. Verify annually against BTD announcements."
+    }
+  ]
+}
