@@ -3,8 +3,6 @@
   <img src="park_grid_logo.png" alt="ParkGrid Logo" width="200"/>
 </p>
 
-<h1 align="center">🅿️ ParkGrid</h1>
-
 <p align="center">
   A Streamlit web app that helps you find the nearest parking meters in <strong>Boston, MA</strong> — with Google Maps navigation built in.
 </p>
