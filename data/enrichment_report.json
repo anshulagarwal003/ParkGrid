@@ -1,0 +1,13 @@
+{
+  "snow_emergency_tow": 30,
+  "accessible": 103,
+  "ev_charging": 7,
+  "osm_parking_matched": 4,
+  "permit_zone_matched": "skipped",
+  "citation_enriched": 1829,
+  "osm_garages_added": 109,
+  "mbta_lots_added": 169,
+  "city_lots_added": 0,
+  "ev_chargers_added": 40,
+  "accessible_spots_added": 101
+}
