@@ -104,8 +104,8 @@
           <h2 class="reveal font-display text-[clamp(2rem,4vw,3rem)] mb-4">What ParkGrid already does</h2>
           <p class="reveal text-lg text-text-secondary mb-6">The repo is a Streamlit app that reads Boston parking meter data, computes distance with a Haversine function, filters by user-selected radius, and returns the nearest parking options with rate, hours, max time, slot count, and Google Maps navigation.</p>
           <div class="grid grid-cols-2 gap-4 mt-4">
-            <div class="grid-card reveal"><div class="text-3xl mb-2">📍</div><p class="font-bold">Location-based search</p><p class="text-text-secondary text-sm">Lat/lon input with a 0.25 km to 5 km search radius.</p></div>
-            <div class="grid-card reveal"><div class="text-3xl mb-2">🗺️</div><p class="font-bold">Maps routing</p><p class="text-text-secondary text-sm">Single-stop and multi-stop Google Maps directions links.</p></div>
+            <div class="grid-card reveal"><div class="text-3xl mb-2">📍</div><p class="font-bold">Flexible search</p><p class="text-text-secondary text-sm">Coordinate input today, destination address input in v2.</p></div>
+            <div class="grid-card reveal"><div class="text-3xl mb-2">🗺️</div><p class="font-bold">Nearby street routing</p><p class="text-text-secondary text-sm">If nearby spaces are taken, route users to other streets within their search radius.</p></div>
           </div>
         </div>
         <div class="grid-card reveal" style="padding:30px">
@@ -140,11 +140,11 @@
         <div class="grid-card reveal">
           <p class="uppercase tracking-[4px] text-text-muted text-sm mb-3">Marketplace layer</p>
           <h3 class="text-2xl font-bold mb-3">Compare meter + app inventory</h3>
-          <p class="text-text-secondary">V2 combines meter data with accessible parking, EV charging, and parking rules, then ranks options by distance, price, and fit so users find the optimal parking option faster.</p>
+          <p class="text-text-secondary">V2 combines meter data with parking rules and additional datasets, then ranks options by distance, price, and fit so users find the optimal parking option faster.</p>
           <ul class="mt-4 space-y-2 text-text-secondary">
             <li>• A parking decision engine, not just a map.</li>
             <li>• Best price near the destination in one interface.</li>
-            <li>• Filters for accessible spaces and EV charging.</li>
+            <li>• Filter by accessible space or EV charging.</li>
           </ul>
         </div>
         <div class="grid-card reveal">
@@ -160,7 +160,7 @@
       <div class="grid grid-cols-4 gap-4 mt-6">
         <div class="grid-card reveal"><div class="text-3xl mb-2">1</div><p class="font-bold">Search nearby inventory</p><p class="text-sm text-text-secondary">Meters plus participating parking apps.</p></div>
         <div class="grid-card reveal"><div class="text-3xl mb-2">2</div><p class="font-bold">Rank best option</p><p class="text-sm text-text-secondary">Optimal parking price near the user destination.</p></div>
-        <div class="grid-card reveal"><div class="text-3xl mb-2">3</div><p class="font-bold">Embed into other apps</p><p class="text-sm text-text-secondary">Parking data can power event and city workflows, such as a Boston Tech Week calendar that shows standard, accessible, EV, and rule-aware parking options beside event details.</p></div>
+        <div class="grid-card reveal"><div class="text-3xl mb-2">3</div><p class="font-bold">Embed into other apps</p><p class="text-sm text-text-secondary">Parking data can power event and city workflows, such as a Boston Tech Week calendar that shows parking options and rules beside event details.</p></div>
         <div class="grid-card reveal"><div class="text-3xl mb-2">4</div><p class="font-bold">Earn partner revenue</p><p class="text-sm text-text-secondary">ParkGrid earns when users convert through partner links or integrated booking handoffs.</p></div>
       </div>
     </div>
