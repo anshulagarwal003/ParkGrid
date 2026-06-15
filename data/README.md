@@ -1,42 +1,84 @@
-# Park Grid — Boston Parking Dataset
+# Park Grid — Multi-Municipality Parking Dataset
 
-A structured, enriched inventory of Boston parking locations — on-street meters, accessible spaces, EV chargers, MBTA lots, and public garages — built for real-time "is it legal to park now?" map overlay applications.
+A structured, enriched inventory of parking locations across **Boston, Brookline, and Cambridge, MA** — on-street meters, accessible spaces, EV chargers, MBTA lots, and public garages — built for real-time "is it legal to park now?" map overlay applications.
 
-**~7,500 locations · WGS84 coordinates · Last updated 2026-06-14**
+**~14,000+ locations · WGS84 coordinates · Last updated 2026-06-14**
 
 ---
 
 ## Pipeline Overview
 
 ```
-Analyze Boston                 Overpass API         Boston Open Data          MBTA API
-  Parking_Meters.csv            OSM EV nodes          OSAP (accessible)         Facilities
-        │                           │                      │                        │
-        ▼                           │                      │                        │
- build_dataset.py                  │                      │                        │
-  • parse PAY_POLICY                │                      │                        │
-  • parse PARK_NO_PAY               │                      │                        │
-  • build parking_policy{}          │                      │                        │
-  • write boston_parking.geojson    │                      │                        │
-        │                           │                      │                        │
-        ▼                           ▼                      ▼                        ▼
- enrich_dataset.py  ◄──────────────────────────────────────────────────────────────┘
-  Step 0  Download & cache all raw sources
-  Step 1  Snow emergency zones  → snow_emergency_tow / snow_emergency_safe_spot
-  Step 2  OSAP proximity match  → accessible=true on nearby meters
-  Step 3  OSM EV proximity      → ev_charging=true on nearby meters
-  Step 4  OSM parking capacity  → capacity update; save unmatched garages
-  Step 5  Permit zones          → permit_zone + restrictions[] entry
-  Step 6  BTD citations         → demand_signals.citation_rate_per_space_month
-  Step 7  Add off-street records (OSM garages, MBTA lots, city lots)
-  Step 8  Add standalone records (EV chargers, accessible spots not near a meter)
-        │
-        ▼
-  boston_parking.geojson   — full schema, nested objects, used for spatial queries
-  boston_parking.csv       — flat subset, used for spreadsheets / quick filtering
-  enrichment_report.json   — per-step match counts
-  holidays.json            — Boston meter holiday calendar
+┌─────────────────────────────── BOSTON ───────────────────────────────────┐
+│                                                                           │
+│  Analyze Boston              Overpass API     Boston Open Data  MBTA API  │
+│  Parking_Meters.csv           OSM EV nodes    OSAP (accessible) Facilities│
+│        │                          │                 │               │     │
+│        ▼                          │                 │               │     │
+│ build_dataset.py                  │                 │               │     │
+│  • parse PAY_POLICY               │                 │               │     │
+│  • parse PARK_NO_PAY              │                 │               │     │
+│  • build parking_policy{}         │                 │               │     │
+│  • write boston_parking.geojson   │                 │               │     │
+│        │                          │                 │               │     │
+│        ▼                          ▼                 ▼               ▼     │
+│ enrich_dataset.py  ◄──────────────────────────────────────────────────── ┘
+│  Step 0  Download & cache all raw sources
+│  Step 1  Snow emergency zones  → snow_emergency_tow / snow_emergency_safe_spot
+│  Step 2  OSAP proximity match  → accessible=true on nearby meters
+│  Step 3  OSM EV proximity      → ev_charging=true on nearby meters
+│  Step 4  OSM parking capacity  → capacity update; save unmatched garages
+│  Step 5  Permit zones          → permit_zone + restrictions[] entry
+│  Step 6  BTD citations         → demand_signals.citation_rate_per_space_month
+│  Step 7  Add off-street records (OSM garages, MBTA lots, city lots)
+│  Step 8  Add standalone records (EV chargers, accessible spots not near a meter)
+│        │
+│        ▼
+│  boston_parking.geojson   — full schema, nested objects, used for spatial queries
+│  boston_parking.csv       — flat CSV, Boston records only
+│  enrichment_report.json   — per-step match counts
+
+┌──────────────────────────── BROOKLINE ───────────────────────────────────┐
+│                                                                           │
+│  ArcGIS FeatureServer                         Overpass API               │
+│  Layer 1: Meters                               OSM EV nodes              │
+│  Layer 2: ParkingSpaces (ADA)                      │                     │
+│  Layer 3: Lots                                     │                     │
+│        │                                           │                     │
+│        ▼                                           ▼                     │
+│ build_brookline.py                                                        │
+│  Step 1  Build meter records (Layer 1)                                    │
+│  Step 2  Build lot records (Layer 3)                                      │
+│  Step 3  Build ADA space records (Layer 2, HAccessible=1)                │
+│  Step 4  Spatial-flag meters near ADA spaces                              │
+│  Step 5  Build EV charger records (OSM)                                   │
+│  Step 6  Write brookline_parking.geojson + brookline_parking.csv         │
+│  Step 7  Merge Brookline rows into all_parking.csv                       │
+
+┌──────────────────────────── CAMBRIDGE ───────────────────────────────────┐
+│                                                                           │
+│  Cambridge MapServer          ArcGIS FeatureServer       Overpass API    │
+│  Layer 10: Meters             ADA Spaces                  OSM EV nodes   │
+│                               Commercial Parking (garages)     │         │
+│        │                          │                            │         │
+│        ▼                          ▼                            ▼         │
+│ build_cambridge.py                                                        │
+│  Step 1  Build meter records (MapServer/10)                              │
+│  Step 2  Build ADA space records                                          │
+│  Step 3  Build garage records                                             │
+│  Step 4  Spatial-flag meters near ADA spaces                              │
+│  Step 5  Build EV charger records (OSM)                                   │
+│  Step 6  Write cambridge_parking.geojson + cambridge_parking.csv         │
+│  Step 7  Merge Cambridge rows into all_parking.csv                       │
+
+                    ┌──────────────────────────┐
+                    │       all_parking.csv     │
+                    │  Boston + Brookline +     │
+                    │  Cambridge combined       │
+                    └──────────────────────────┘
 ```
+
+Alternatively, `merge_parking.py` can rebuild `all_parking.csv` from the three city CSVs in one pass.
 
 ---
 
@@ -44,26 +86,29 @@ Analyze Boston                 Overpass API         Boston Open Data          MB
 
 | File | Description |
 |---|---|
-| `boston_parking.geojson` | Full dataset as GeoJSON FeatureCollection. Contains all fields including nested `parking_policy{}`, `restrictions[]`, and `demand_signals{}` |
-| `boston_parking.csv` | Flat CSV subset — key fields only, nested arrays flattened or omitted. Primary output for spreadsheet/BI use |
+| `boston_parking.geojson` | Full Boston dataset as GeoJSON FeatureCollection. Contains all fields including nested `parking_policy{}`, `restrictions[]`, and `demand_signals{}` |
+| `boston_parking.csv` | Flat CSV — Boston records only |
+| `brookline_parking.geojson` | Full Brookline dataset as GeoJSON FeatureCollection |
+| `brookline_parking.csv` | Flat CSV — Brookline records only |
+| `cambridge_parking.geojson` | Full Cambridge dataset as GeoJSON FeatureCollection |
+| `cambridge_parking.csv` | Flat CSV — Cambridge records only |
+| `all_parking.csv` | **Multi-city master CSV** — Boston + Brookline + Cambridge combined, superset of all columns |
 | `holidays.json` | Boston meter holiday calendar (referenced by `free_on_holidays[]`) |
-| `enrichment_report.json` | Step-by-step match counts from the last enrich run |
-| `qa_active_now.json` | Build-time resolver snapshot for QA — **never ship this** |
-| `build_dataset/flatten_geojson.py` | Standalone script: converts any boston_parking.geojson into a CSV |
+| `enrichment_report.json` | Step-by-step match counts from the last Boston enrich run |
 
 ---
 
 ## Record Types
 
-| `type` value | Description | Source | Count (approx) |
+| `type` value | Description | Source | Municipalities |
 |---|---|---|---|
-| `on_street_meter` | BTD metered on-street space | Analyze Boston BTD | ~6,955 |
-| `mbta_lot` | MBTA park-and-ride lot | MBTA Facilities API | ~169 |
-| `public_garage` | OSM-mapped public/city parking garage | OpenStreetMap | ~109 |
-| `accessible_parking` | Standalone OSAP-designated accessible space | Boston OSAP / BostonGIS | ~140 |
-| `ev_charging` | EV charging station not co-located with a meter | OpenStreetMap | ~47 |
+| `on_street_meter` | Metered on-street space | BTD / ArcGIS / Cambridge MapServer | Boston, Brookline, Cambridge |
+| `mbta_lot` | MBTA park-and-ride lot | MBTA Facilities API | Boston |
+| `public_garage` | Public/city parking garage | OpenStreetMap, ArcGIS | Boston, Cambridge |
+| `accessible_parking` | Standalone ADA-designated accessible space | Boston OSAP / Brookline ArcGIS / Cambridge ArcGIS | Boston, Brookline, Cambridge |
+| `ev_charging` | EV charging station not co-located with a meter | OpenStreetMap | Boston, Brookline, Cambridge |
 
-> **Accessibility is an attribute, not always a type.** On-street meters near an OSAP spot get `accessible=true` and `accessible_spaces=N` set directly — they stay `type: on_street_meter`. The `accessible_parking` type is only for standalone OSAP spots that have no co-located metered record.
+> **Accessibility is an attribute, not always a type.** On-street meters near an accessible space get `accessible=true` and `accessible_spaces=N` set directly — they stay `type: on_street_meter`. The `accessible_parking` type is only for standalone accessible spots that have no co-located metered record.
 
 ---
 
@@ -87,15 +132,15 @@ Each feature's `properties` object:
 | `name` | string | Street name or facility name |
 | `address` | string | Full street address where known |
 | `street_side` | enum | `N` `S` `E` `W` `unknown` — null for off-street |
-| `neighborhood` | string | Boston neighborhood, e.g. `"Back Bay"` |
-| `btd_district` | string | BTD enforcement district |
-| `lat` / `lon` | float | WGS84. For non-point geometry, this is the centroid — use `geometry` for spatial ops |
+| `neighborhood` | string | Neighborhood name |
+| `btd_district` | string | BTD enforcement district (Boston only) |
+| `lat` / `lon` | float | WGS84. For non-point geometry, this is the centroid |
 
 ### Classification
 
 | Field | Type | Values |
 |---|---|---|
-| `municipality` | string | `"Boston"`, `"Brookline"` — city/town that governs this record |
+| `municipality` | string | `"Boston"` `"Brookline"` `"Cambridge"` |
 | `type` | enum | `on_street_meter` `mbta_lot` `public_garage` `accessible_parking` `ev_charging` |
 | `ownership` | enum | `public` `private` |
 
@@ -104,12 +149,12 @@ Each feature's `properties` object:
 | Field | Type | Notes |
 |---|---|---|
 | `payment_id` | string | Code typed into a payment app (meter ID, MBTA lot code) |
-| `payment_app` | array | `["ParkBoston"]`, `["pay_and_display","ParkBoston"]`, `["PayByPhone"]`, `["gate"]` |
+| `payment_app` | array | `["ParkBoston"]`, `["PayByPhone"]`, `["gate"]` |
 | `payment_methods` | array | `["card","coin","app"]`, `["free"]`, `["gate"]` |
 
 ### Pricing Policy (`parking_policy{}`)
 
-The machine-readable pricing block. Replaces the old `pricing_rules[]` / `free_periods[]` flat arrays.
+The machine-readable pricing block.
 
 ```json
 {
@@ -152,38 +197,11 @@ The machine-readable pricing block. Replaces the old `pricing_rules[]` / `free_p
 - `"flat_daily"` — `price_per_day.amount` (used by MBTA lots)
 - `"free"` — no charge
 
-**Day abbreviations:** lowercase 3-letter, e.g. `"mon"` `"tue"` `"wed"` `"thu"` `"fri"` `"sat"` `"sun"`.
-
-**`pricing_summary`** is the human-readable string for display only — the `rules[]` array is the source of truth for resolver logic.
+**Day abbreviations:** lowercase 3-letter: `"mon"` `"tue"` `"wed"` `"thu"` `"fri"` `"sat"` `"sun"`.
 
 ### Restrictions (`restrictions[]`)
 
-Non-pricing overlapping rules. A spot can simultaneously be metered, permit-required, and a street-cleaning tow zone.
-
-```json
-{
-  "restrictions": [
-    {
-      "rule_type": "street_cleaning",
-      "days": ["Tue"],
-      "start": "05:00",
-      "end": "07:00",
-      "season_start": "04-01",
-      "season_end": "11-30",
-      "consequence": "tow",
-      "enforcement_agency": "BTD",
-      "note": "Street cleaning — vehicle will be towed"
-    },
-    {
-      "rule_type": "permit",
-      "days": ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
-      "start": null,
-      "end": null,
-      "note": "Permit zone 887 — verify schedule on posted signs"
-    }
-  ]
-}
-```
+Non-pricing overlapping rules (street cleaning, permit zones, snow emergency, etc.).
 
 `rule_type` values: `street_cleaning` `tow_zone` `permit` `snow_emergency` `loading_zone` `time_limit` `visitor`
 
@@ -192,10 +210,9 @@ Non-pricing overlapping rules. A spot can simultaneously be metered, permit-requ
 | Field | Type | Notes |
 |---|---|---|
 | `free_on_holidays` | array | `["boston_meters"]` or `["mbta"]` — resolved against `holidays.json` |
-| `holiday_calendar` | enum | `boston_meters` `mbta` `none` |
 | `space_count` | int | Spaces in this on-street record |
 | `capacity` | int | Total spaces for off-street facilities |
-| `permit_zone` | string | Zone code, e.g. `"887"` |
+| `permit_zone` | string | Zone code (Boston) |
 
 ### Accessibility & EV
 
@@ -203,12 +220,20 @@ Non-pricing overlapping rules. A spot can simultaneously be metered, permit-requ
 |---|---|---|
 | `accessible` | bool | True if at least one accessible space is present |
 | `accessible_spaces` | int | Count of accessible spaces |
-| `year_last_confirmed` | int | Year OSAP last verified this accessible spot (OSAP records only) |
+| `accessible_type` | string | `"standard_ada"` or `"van_accessible"` (Brookline/Cambridge; empty for Boston) |
 | `ev_charging` | bool | True if EV charging is co-located |
-| `ev_network` | string | Charging network name, e.g. `"Tesla Supercharger"` (EV records only) |
-| `ev_socket_types` | array | Socket types from OSM, e.g. `["nacs"]` (EV records only) |
+| `ev_charger_count` | int | Number of EV charging ports (from OSM `capacity` tag) |
+| `ev_network` | string | Charging network name, e.g. `"Tesla Supercharger"` |
 
-### Snow Emergency
+### Brookline-Specific Fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `overnight_rental_spaces` | int | Spaces available for overnight rental |
+| `overnight_guest_spaces` | int | Guest overnight spaces |
+| `lot_number` | string | Brookline lot identifier |
+
+### Snow Emergency (Boston)
 
 | Field | Type | Notes |
 |---|---|---|
@@ -219,68 +244,59 @@ Non-pricing overlapping rules. A spot can simultaneously be metered, permit-requ
 
 Updated by a separate pipeline; null until computed.
 
-```json
-{
-  "demand_signals": {
-    "citation_rate_per_space_month": 2.1,
-    "demand_signals_date": "2026-06-14"
-  }
-}
-```
-
 | Field | Type | Notes |
 |---|---|---|
-| `citation_rate_per_space_month` | float | Avg BTD citations per space per month. Null ≠ zero citations |
+| `citation_rate_per_space_month` | float | Avg BTD citations per space per month (Boston only) |
 | `demand_signals_date` | date | Date signals were last computed |
 
 ### Provenance
 
 | Field | Type | Values / Notes |
 |---|---|---|
-| `source` | enum | `analyze_boston` `mbta_official` `osm` `osap` `field_visit` `street_view` `unknown` |
+| `source` | enum | `analyze_boston` `mbta_official` `osm` `osap` `arcgis` `field_visit` `unknown` |
 | `source_date` | date | Date the source data reflects |
 | `last_updated` | date | Date this record was last processed |
-| `needs_verification` | bool | True if data should be confirmed before publishing |
-| `verification_method` | enum | `official_source` `field_visit` `street_view` `phone_call` `none` |
 | `data_completeness` | enum | `high` `partial` `low` |
 
 ---
 
 ## CSV Field Reference
 
-The CSV is a flat projection of the GeoJSON — nested fields are either flattened or omitted.
+`all_parking.csv` is the superset of all columns. City-specific CSVs (`boston_parking.csv`, `brookline_parking.csv`, `cambridge_parking.csv`) contain only that city's relevant columns.
 
-| CSV Column | Source in GeoJSON | Notes |
-|---|---|---|
-| `spot_id` | `properties.spot_id` | |
-| `payment_id` | `properties.payment_id` | |
-| `payment_app` | `properties.payment_app` | Pipe-separated: `pay_and_display\|ParkBoston` |
-| `name` | `properties.name` | |
-| `address` | `properties.address` | |
-| `street_side` | `properties.street_side` | |
-| `neighborhood` | `properties.neighborhood` | |
-| `btd_district` | `properties.btd_district` | |
-| `municipality` | `properties.municipality` | |
-| `type` | `properties.type` | |
-| `ownership` | `properties.ownership` | |
-| `lat` | `geometry.coordinates[1]` | |
-| `lon` | `geometry.coordinates[0]` | |
-| `pricing_summary` | `properties.parking_policy.pricing_summary` | Human-readable; not for resolver logic |
-| `space_count` | `properties.space_count` | |
-| `capacity` | `properties.capacity` | |
-| `permit_zone` | `properties.permit_zone` | |
-| `snow_emergency_tow` | `properties.snow_emergency_tow` | |
-| `accessible` | `properties.accessible` | |
-| `accessible_spaces` | `properties.accessible_spaces` | |
-| `ev_charging` | `properties.ev_charging` | |
-| `ev_network` | `properties.ev_network` | |
-| `citation_rate_per_space_month` | `properties.demand_signals.citation_rate_per_space_month` | |
-| `source` | `properties.source` | |
-| `source_date` | `properties.source_date` | |
-| `last_updated` | `properties.last_updated` | |
-| `data_completeness` | `properties.data_completeness` | |
-
-Fields **only in GeoJSON, not in CSV:** `parking_policy.rules[]`, `restrictions[]`, `free_on_holidays[]`, `holiday_calendar`, `ev_socket_types`, `year_last_confirmed`, `snow_emergency_safe_spot`, `demand_signals.demand_signals_date`, `schema_version`, `parent_facility_id`, `needs_verification`, `verification_method`, `source_url`.
+| CSV Column | Notes |
+|---|---|
+| `spot_id` | Unique record identifier |
+| `payment_id` | Code for payment app |
+| `payment_app` | Pipe-separated: `pay_and_display\|ParkBoston` |
+| `name` | Street or facility name |
+| `address` | Street address |
+| `street_side` | `N` `S` `E` `W` `unknown` |
+| `neighborhood` | Neighborhood name |
+| `btd_district` | Boston only |
+| `municipality` | `"Boston"` `"Brookline"` `"Cambridge"` |
+| `type` | Record type |
+| `ownership` | `public` or `private` |
+| `lat` / `lon` | WGS84 coordinates |
+| `pricing_summary` | Human-readable pricing string |
+| `space_count` | Spaces in on-street record |
+| `capacity` | Total spaces for off-street facilities |
+| `overnight_rental_spaces` | Brookline only |
+| `overnight_guest_spaces` | Brookline only |
+| `lot_number` | Brookline only |
+| `permit_zone` | Boston only |
+| `snow_emergency_tow` | Boston only |
+| `accessible` | True if accessible space present |
+| `accessible_spaces` | Count of accessible spaces |
+| `accessible_type` | `"standard_ada"` or `"van_accessible"` (Brookline/Cambridge) |
+| `ev_charging` | True if EV charging present |
+| `ev_charger_count` | Number of EV ports |
+| `ev_network` | Charging network name |
+| `citation_rate_per_space_month` | Boston only |
+| `source` | Data source |
+| `source_date` | Source data date |
+| `last_updated` | Last processing date |
+| `data_completeness` | `high` `partial` `low` |
 
 ---
 
@@ -323,32 +339,28 @@ Dates shift when a holiday falls on a weekend. Verify annually against BTD annou
 
 ---
 
-## Important Notes
-
-**Pricing rules, not live state.** The dataset stores when and how much you'd pay — not whether a space is currently occupied.
-
-**Free ≠ no time limit during paid hours.** During paid windows (e.g. Mon–Sat 8am–8pm) the `max_session_minutes` constraint applies. During free windows (Sunday, overnight, holidays) BTD does not enforce a time limit — the resolver must set `current_max_minutes: null` in those cases.
-
-**Off-street records need verification.** OSM garages and some MBTA lots have `needs_verification: true` — pricing may be incomplete. Do not display them as authoritative without further confirmation.
-
-**`permit_zone` alone is incomplete.** The zone code is in the CSV; the enforcement schedule (days, hours, season) is in `restrictions[]` in the GeoJSON.
-
-**`citation_rate_per_space_month` null ≠ zero.** Null means insufficient citation data was matched — not that no enforcement occurs.
-
-**Accessible coverage is partial.** OSAP covers commercial corridors; absence of `accessible=true` does not mean no accessible space exists.
-
----
-
 ## Rebuilding the Dataset
 
 ```bash
 cd build_dataset
 
-# Step 1 — build base GeoJSON from BTD meter CSV
+# Boston — build base GeoJSON, then enrich
 python build_dataset.py
-
-# Step 2 — download external sources and enrich in-place
 python enrich_dataset.py
+# Outputs: boston_parking.geojson, boston_parking.csv
+
+# Brookline — fetch ArcGIS layers + OSM EV, merge into all_parking.csv
+python build_brookline.py
+# Outputs: brookline_parking.geojson, brookline_parking.csv
+
+# Cambridge — fetch MapServer + ArcGIS + OSM EV, merge into all_parking.csv
+python build_cambridge.py
+# Outputs: cambridge_parking.geojson, cambridge_parking.csv
+
+# all_parking.csv is written automatically by each city script (Step 7).
+# To rebuild it from the three city CSVs in one pass:
+python merge_parking.py
+# Outputs: all_parking.csv
 
 # Optional — re-export CSV from an existing GeoJSON without re-running enrichment
 python flatten_geojson.py                              # uses boston_parking.geojson by default
@@ -363,12 +375,35 @@ Raw downloads are cached in `build_dataset/raw/` — delete a file to force a fr
 
 | Source | Dataset | Used for |
 |---|---|---|
-| Analyze Boston (BTD) | Parking Meters | Base on-street meter records |
-| Boston Open Data (OSAP / BostonGIS) | On Street Accessible Parking Spaces | Accessible space locations + counts |
-| OpenStreetMap (Overpass API) | `amenity=charging_station` | EV charger locations |
-| OpenStreetMap (Overpass API) | `amenity=parking` | Garage capacity; new garage candidates |
-| OpenStreetMap (Overpass API) | `amenity=parking` + Boston operator | City-operated lots |
+| Analyze Boston (BTD) | Parking Meters | Boston base on-street meter records |
+| Boston Open Data (OSAP / BostonGIS) | On Street Accessible Parking Spaces | Boston accessible space locations + counts |
+| OpenStreetMap (Overpass API) | `amenity=charging_station` | EV charger locations (all cities) |
+| OpenStreetMap (Overpass API) | `amenity=parking` | Garage capacity; new garage candidates (Boston) |
 | MBTA Facilities API | `filter[type]=PARKING_AREA` | MBTA park-and-ride lots + rates |
-| BTD Parking Citations | Year-to-date citations CSV | `citation_rate_per_space_month` |
-| Analyze Boston | Snow Emergency Parking | Snow tow zones + safe spots |
-| Analyze Boston | Resident Permit Zones | Permit zone polygons |
+| BTD Parking Citations | Year-to-date citations CSV | `citation_rate_per_space_month` (Boston) |
+| Analyze Boston | Snow Emergency Parking | Snow tow zones + safe spots (Boston) |
+| Analyze Boston | Resident Permit Zones | Permit zone polygons (Boston) |
+| Brookline ArcGIS FeatureServer | Public Parking Feeder Map (Layers 1–3) | Brookline meters, ADA spaces, lots |
+| Cambridge ArcGIS / MapServer | TrafficAGOLLayers/MapServer/10 | Cambridge meters |
+| Cambridge ArcGIS FeatureServer | Public Handicap Parking Spaces | Cambridge ADA spaces |
+| Cambridge ArcGIS FeatureServer | Commercial Parking | Cambridge garages |
+
+---
+
+## Important Notes
+
+**Pricing rules, not live state.** The dataset stores when and how much you'd pay — not whether a space is currently occupied.
+
+**Free ≠ no time limit during paid hours.** During paid windows (e.g. Mon–Sat 8am–8pm) the `max_session_minutes` constraint applies. During free windows (Sunday, overnight, holidays) BTD does not enforce a time limit.
+
+**Off-street records need verification.** OSM garages and some MBTA lots have `needs_verification: true` — pricing may be incomplete.
+
+**`permit_zone` alone is incomplete.** The zone code is in the CSV; the enforcement schedule is in `restrictions[]` in the GeoJSON.
+
+**`citation_rate_per_space_month` null ≠ zero.** Null means insufficient citation data was matched — not that no enforcement occurs.
+
+**Accessible coverage is partial.** Absence of `accessible=true` does not mean no accessible space exists.
+
+**`accessible_type` is Brookline/Cambridge only.** Boston's OSAP data does not distinguish van-accessible from standard ADA — the field will be empty for Boston records.
+
+**SSL/network issues on Overpass.** If the OSM Overpass query fails (SSL cert error), the script continues with 0 EV chargers added. This is a local network issue — re-run once the connection is restored.

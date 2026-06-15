@@ -1,5 +1,5 @@
 """
-merge_parking.py — Merge Boston and Brookline parking CSVs into one file.
+merge_parking.py — Merge Boston, Brookline, and Cambridge parking CSVs into all_parking.csv.
 
 Usage:
     python merge_parking.py                    # default input/output paths
@@ -8,9 +8,10 @@ Usage:
 Inputs (must exist):
     boston_parking.csv
     brookline_parking.csv
+    cambridge_parking.csv
 
 Output:
-    parking_merged.csv  (or custom path)
+    all_parking.csv  (or custom path)
 
 Municipality-specific columns are included for all rows; missing values are blank.
 """
@@ -27,7 +28,7 @@ INPUTS = [
     BASE_DIR / "cambridge_parking.csv",
 ]
 
-DEFAULT_OUTPUT = BASE_DIR / "parking_merged.csv"
+DEFAULT_OUTPUT = BASE_DIR / "all_parking.csv"
 
 # Superset of both schemas, in logical order.
 # Boston-only: btd_district, ev_network, citation_rate_per_space_month
@@ -80,7 +81,7 @@ def main():
     if missing:
         for p in missing:
             print(f"  [missing] {p}")
-        sys.exit("Run build_dataset.py + enrich_dataset.py and build_brookline.py first.")
+        sys.exit("Run build_dataset.py + enrich_dataset.py, build_brookline.py, and build_cambridge.py first.")
 
     all_rows = []
     for path in INPUTS:
