@@ -95,6 +95,7 @@ Each feature's `properties` object:
 
 | Field | Type | Values |
 |---|---|---|
+| `municipality` | string | `"Boston"`, `"Brookline"` — city/town that governs this record |
 | `type` | enum | `on_street_meter` `mbta_lot` `public_garage` `accessible_parking` `ev_charging` |
 | `ownership` | enum | `public` `private` |
 
@@ -259,6 +260,7 @@ The CSV is a flat projection of the GeoJSON — nested fields are either flatten
 | `street_side` | `properties.street_side` | |
 | `neighborhood` | `properties.neighborhood` | |
 | `btd_district` | `properties.btd_district` | |
+| `municipality` | `properties.municipality` | |
 | `type` | `properties.type` | |
 | `ownership` | `properties.ownership` | |
 | `lat` | `geometry.coordinates[1]` | |

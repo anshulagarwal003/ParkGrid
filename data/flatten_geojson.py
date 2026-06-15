@@ -28,6 +28,7 @@ CSV_FIELDS = [
     "street_side",
     "neighborhood",
     "btd_district",
+    "municipality",
     "type",
     "ownership",
     "lat",

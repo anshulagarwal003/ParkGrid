@@ -322,6 +322,7 @@ def build_record(row: dict, idx: int) -> dict:
         "btd_district": row.get("G_DISTRICT", "").strip() or None,
         "type": "on_street_meter",
         "ownership": "public",
+        "municipality": "Boston",
         "lat": lat,
         "lon": lon,
         "parking_policy": {
@@ -369,7 +370,7 @@ def record_to_feature(rec: dict) -> dict:
 
 CSV_EXPORT_FIELDS = [
     "spot_id", "payment_id", "payment_app", "name", "address",
-    "street_side", "neighborhood", "btd_district", "type", "ownership",
+    "street_side", "neighborhood", "btd_district", "municipality", "type", "ownership",
     "lat", "lon", "pricing_summary", "space_count", "permit_zone",
     "snow_emergency_tow", "accessible", "ev_charging",
     "source", "source_date", "last_updated", "data_completeness",
