@@ -20,6 +20,8 @@
 
 **ParkGrid** lets you drop in your current GPS coordinates, set a search radius, and instantly surface the 10 closest individual parking meter spots — complete with rates, time limits, free-parking windows, and slot counts. One click launches a multi-stop Google Maps route to navigate all of them in order.
 
+Demo: <a href="https://park-grid.vercel.app/">Park Grid</a>
+
 ***
 
 ## Features
